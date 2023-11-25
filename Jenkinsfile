@@ -1,20 +1,15 @@
 pipeline {
     agent any
-parameters {
-  choice choices: ['Dev', 'Test', 'UAT', 'Prod'], description: 'Choose the stage to deploy', name: 'stage'
-  string description: 'Enter your Name ', name: 'triggred_by'
-}
-
     environment {
         // Define environment variables
         DOCKERHUB_CREDENTIALS = credentials('docker-hub-credentials') // ID of your Docker Hub credentials in Jenkins
-        IMAGE_TAG = "mahesh430/java-sample:latest" // Replace with your Docker Hub username and image name
+        IMAGE_TAG = "datdbq/java-sample:latest" // Replace with your Docker Hub username and image name
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/mahesh430/sample-java-application.git'
+                git branch: 'main', url: 'https://github.com/datC3505/Java-application.git'
             }
         }
 
@@ -26,15 +21,16 @@ parameters {
                 }
             }
         }
-        
-  stage('SoarQube - Static Code Analysis') {
+
+        stage('SonarQube - Static Code Analysis') {
             steps {
                 script {
                     // Static code analysis
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=java-app -Dsonar.host.url=http://18.222.25.49:9000 -Dsonar.login=7168448a52cb42b70f6b7b46d8419032bce0f406'
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=java-app -Dsonar.host.url=ec2-52-66-74-201.ap-south-1.compute.amazonaws.com:9000 -Dsonar.login=squ_8820d6774a41cc76228f99677ce385f77f94ec34'
                 }
             }
         }
+
         stage('Build Docker Image') {
             steps {
                 script {
@@ -43,15 +39,19 @@ parameters {
                 }
             }
         }
-   stage('Docker image scan') {
+
+        stage('Scan with Trivy') {
             steps {
                 script {
-                    // Scan  Docker Image
-                   sh "trivy image --exit-code 0 --no-progress ${IMAGE_TAG}"
+                    // Install Trivy
+                    sh 'wget -qO- https://github.com/aquasecurity/trivy/releases/download/v0.18.3/trivy_0.18.3_Linux-64bit.tar.gz | tar xvz -C /tmp/ && mv /tmp/trivy /usr/local/bin/'
+
+                    // Run Trivy scan
+                    sh 'trivy image --exit-code 0 --no-progress ${IMAGE_TAG}'
                 }
             }
         }
-        
+
         stage('Push to Docker Hub') {
             steps {
                 script {
@@ -62,7 +62,6 @@ parameters {
                 }
             }
         }
-
     }
 
     post {
@@ -72,4 +71,4 @@ parameters {
         }
     }
 }
-
+ 
